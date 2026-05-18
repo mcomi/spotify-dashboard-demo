@@ -77,6 +77,48 @@ async function testTokenExchange() {
   assert(tokenRequest.body.includes("code=code-123"));
 }
 
+async function testTokenExchangeFallsBackToBodyCredentials() {
+  const tokenRequests = [];
+  const client = new SpotifyClient({
+    clientId: "client-id",
+    clientSecret: "client-secret",
+    redirectUri: "http://127.0.0.1:3000/api/spotify/callback",
+    request: async (request) => {
+      tokenRequests.push(request);
+
+      if (request.headers.Authorization) {
+        return {
+          status: 400,
+          headers: {},
+          body: {
+            error: "invalid_client",
+            error_description: "Invalid client"
+          }
+        };
+      }
+
+      return {
+        status: 200,
+        headers: {},
+        body: {
+          access_token: "access-token",
+          refresh_token: "refresh-token",
+          expires_in: 3600
+        }
+      };
+    }
+  });
+
+  const tokens = await client.exchangeCodeForTokens("code-123");
+
+  assert.strictEqual(tokens.refresh_token, "refresh-token");
+  assert.strictEqual(tokenRequests.length, 2);
+  assert(tokenRequests[0].headers.Authorization.startsWith("Basic "));
+  assert(!tokenRequests[1].headers.Authorization);
+  assert(tokenRequests[1].body.includes("client_id=client-id"));
+  assert(tokenRequests[1].body.includes("client_secret=client-secret"));
+}
+
 async function testRefreshAndPagination() {
   const calls = [];
   const client = new SpotifyClient({
@@ -347,6 +389,7 @@ async function run() {
   const tests = [
     testAuthorizationUrl,
     testTokenExchange,
+    testTokenExchangeFallsBackToBodyCredentials,
     testRefreshAndPagination,
     testUnauthorizedRetryRefreshesToken,
     testRateLimitRetry,

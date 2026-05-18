@@ -47,7 +47,10 @@ class SpotifyClient {
       redirect_uri: this.redirectUri
     }).toString();
 
-    return this.postToken(body);
+    return this.postToken(body, {
+      clientId: this.clientId,
+      clientSecret: this.clientSecret
+    });
   }
 
   async refreshAccessToken() {
@@ -60,7 +63,10 @@ class SpotifyClient {
       refresh_token: this.refreshToken
     }).toString();
 
-    const tokens = await this.postToken(body);
+    const tokens = await this.postToken(body, {
+      clientId: this.clientId,
+      clientSecret: this.clientSecret
+    });
     this.accessToken = tokens.access_token;
     this.accessTokenExpiresAt = Date.now() + (tokens.expires_in - 60) * 1000;
 
@@ -71,7 +77,7 @@ class SpotifyClient {
     return tokens;
   }
 
-  async postToken(body) {
+  async postToken(body, fallbackCredentials) {
     const response = await this.request({
       method: "POST",
       url: TOKEN_URL,
@@ -83,6 +89,40 @@ class SpotifyClient {
         "Content-Type": "application/x-www-form-urlencoded"
       },
       body
+    });
+
+    if (
+      response.status === 400 &&
+      response.body &&
+      response.body.error === "invalid_client" &&
+      fallbackCredentials
+    ) {
+      return this.postTokenWithCredentialsInBody(body, fallbackCredentials);
+    }
+
+    if (response.status < 200 || response.status >= 300) {
+      const message =
+        response.body && response.body.error_description
+          ? response.body.error_description
+          : `Spotify token request failed with status ${response.status}`;
+      throw new Error(message);
+    }
+
+    return response.body;
+  }
+
+  async postTokenWithCredentialsInBody(body, credentials) {
+    const params = new URLSearchParams(body);
+    params.set("client_id", credentials.clientId);
+    params.set("client_secret", credentials.clientSecret);
+
+    const response = await this.request({
+      method: "POST",
+      url: TOKEN_URL,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: params.toString()
     });
 
     if (response.status < 200 || response.status >= 300) {

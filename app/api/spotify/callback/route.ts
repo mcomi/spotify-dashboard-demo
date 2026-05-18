@@ -1,5 +1,5 @@
 const { URL } = require("url");
-const { requireEnv } = require("../../../../src/config");
+const { loadDotEnv, requireEnv } = require("../../../../src/config");
 const { errorResponse } = require("../../../../src/http-responses");
 const { SpotifyClient } = require("../../../../src/spotify/client");
 
@@ -11,6 +11,7 @@ function getErrorMessage(error: unknown) {
 
 export async function GET(request: Request) {
   try {
+    loadDotEnv(".env.local", { override: process.env.NODE_ENV !== "production" });
     requireEnv([
       "SPOTIFY_CLIENT_ID",
       "SPOTIFY_CLIENT_SECRET",

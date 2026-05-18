@@ -1,8 +1,9 @@
 const fs = require("fs");
 const path = require("path");
 
-function loadDotEnv(filePath) {
+function loadDotEnv(filePath, options) {
   const resolved = filePath || path.join(process.cwd(), ".env");
+  const loadOptions = options || {};
 
   if (!fs.existsSync(resolved)) {
     return;
@@ -33,7 +34,11 @@ function loadDotEnv(filePath) {
       value = value.slice(1, -1);
     }
 
-    if (!process.env[key]) {
+    if (
+      !process.env[key] ||
+      loadOptions.override ||
+      isUnsetEnvValue(key)
+    ) {
       process.env[key] = value;
     }
   }

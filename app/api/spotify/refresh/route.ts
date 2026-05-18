@@ -1,4 +1,4 @@
-const { requireEnv } = require("../../../../src/config");
+const { loadDotEnv, requireEnv } = require("../../../../src/config");
 const { errorResponse, jsonResponse } = require("../../../../src/http-responses");
 const { saveSnapshot } = require("../../../../src/storage/snapshot-store");
 const {
@@ -22,6 +22,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    loadDotEnv(".env.local", { override: process.env.NODE_ENV !== "production" });
     requireEnv([
       "SPOTIFY_CLIENT_ID",
       "SPOTIFY_CLIENT_SECRET",
