@@ -5,6 +5,7 @@ function requestJson(options) {
   const url = new URL(options.url);
   const body = options.body || null;
   const headers = Object.assign({}, options.headers || {});
+  const timeoutMs = options.timeoutMs || 20000;
 
   if (body) {
     headers["Content-Length"] = Buffer.byteLength(body);
@@ -46,6 +47,9 @@ function requestJson(options) {
     );
 
     request.on("error", reject);
+    request.setTimeout(timeoutMs, () => {
+      request.destroy(new Error(`Request timed out after ${timeoutMs}ms: ${url.href}`));
+    });
 
     if (body) {
       request.write(body);

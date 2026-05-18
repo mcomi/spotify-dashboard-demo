@@ -10,6 +10,7 @@ const {
   createAuthorizationUrl
 } = require("../src/spotify/client");
 
+loadDotEnv(".env.local");
 loadDotEnv();
 requireEnv([
   "SPOTIFY_CLIENT_ID",

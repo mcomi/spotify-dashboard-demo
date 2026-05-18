@@ -7,6 +7,7 @@ const {
   pullSpotifySnapshot
 } = require("../src/spotify/pull");
 
+loadDotEnv(".env.local");
 loadDotEnv();
 requireEnv([
   "SPOTIFY_CLIENT_ID",
@@ -17,7 +18,9 @@ requireEnv([
 
 async function main() {
   console.log("Pulling Spotify snapshot...");
-  const output = await pullSpotifySnapshot(createSpotifyClientFromEnv());
+  const output = await pullSpotifySnapshot(createSpotifyClientFromEnv(), {
+    onProgress: (message) => console.log(message)
+  });
   const saved = await saveSnapshot(output);
 
   console.log(`\nWrote Spotify snapshot to ${saved.latestKey}`);
