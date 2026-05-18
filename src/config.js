@@ -39,17 +39,28 @@ function loadDotEnv(filePath) {
   }
 }
 
+function isUnsetEnvValue(name) {
+  const value = process.env[name];
+
+  return (
+    !value ||
+    value === "your_spotify_client_id" ||
+    value === "your_spotify_client_secret"
+  );
+}
+
 function requireEnv(names) {
-  const missing = names.filter((name) => !process.env[name]);
+  const missing = names.filter((name) => isUnsetEnvValue(name));
 
   if (missing.length > 0) {
     throw new Error(
-      `Missing required environment variables: ${missing.join(", ")}`
+      `Missing or placeholder environment variables: ${missing.join(", ")}`
     );
   }
 }
 
 module.exports = {
+  isUnsetEnvValue,
   loadDotEnv,
   requireEnv
 };
