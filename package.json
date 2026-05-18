@@ -1,0 +1,34 @@
+{
+  "name": "spotify-dashboard-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal Spotify analytics data pull for a dashboard demo.",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "spotify:auth": "node scripts/spotify-auth.js",
+    "spotify:pull": "node scripts/spotify-pull.js",
+    "test": "node tests/spotify-client.test.js"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "next": "^15.5.18",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^2.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

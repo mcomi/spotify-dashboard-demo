@@ -1,0 +1,10 @@
+.env
+.env.local
+.env*.local
+data/*.json
+data/*.ndjson
+node_modules/
+.next/
+out/
+coverage/
+.DS_Store
