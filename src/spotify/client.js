@@ -32,6 +32,19 @@ function tokenErrorMessage(response) {
     : `Spotify token request failed with status ${response.status}`;
 }
 
+function isRetryableTokenResponse(response) {
+  return (
+    response.status === 408 ||
+    response.status === 425 ||
+    response.status === 429 ||
+    response.status === 500 ||
+    response.status === 502 ||
+    response.status === 503 ||
+    response.status === 504 ||
+    (response.status >= 500 && !response.body)
+  );
+}
+
 function createAuthorizationUrl(options) {
   const params = new URLSearchParams({
     response_type: "code",
@@ -97,27 +110,39 @@ class SpotifyClient {
   }
 
   async postToken(body, fallbackCredentials) {
-    const response = await this.request({
-      method: "POST",
-      url: TOKEN_URL,
-      headers: {
-        Authorization: `Basic ${encodeBasicAuth(
-          this.clientId,
-          this.clientSecret
-        )}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json"
-      },
-      body
-    });
+    return this.postTokenAttempt(body, fallbackCredentials, 0, "basic");
+  }
+
+  async postTokenAttempt(body, fallbackCredentials, attempt, method) {
+    const response =
+      method === "body" && fallbackCredentials
+        ? await this.postTokenWithCredentialsInBodyResponse(body, fallbackCredentials)
+        : await this.postTokenWithBasicResponse(body);
 
     if (
       response.status === 400 &&
       response.body &&
       response.body.error === "invalid_client" &&
-      fallbackCredentials
+      fallbackCredentials &&
+      method !== "body"
     ) {
-      return this.postTokenWithCredentialsInBody(body, fallbackCredentials);
+      return this.postTokenAttempt(body, fallbackCredentials, attempt, "body");
+    }
+
+    if (
+      isRetryableTokenResponse(response) &&
+      attempt < 3
+    ) {
+      const retryAfterSeconds = Number(response.headers["retry-after"] || 0);
+      const fallbackDelayMs = 400 * Math.pow(2, attempt);
+      const delayMs = retryAfterSeconds > 0 ? retryAfterSeconds * 1000 : fallbackDelayMs;
+      await sleep(delayMs);
+
+      if (fallbackCredentials && method !== "body") {
+        return this.postTokenAttempt(body, fallbackCredentials, attempt + 1, "body");
+      }
+
+      return this.postTokenAttempt(body, fallbackCredentials, attempt + 1, method);
     }
 
     if (response.status < 200 || response.status >= 300) {
@@ -131,12 +156,28 @@ class SpotifyClient {
     return response.body;
   }
 
-  async postTokenWithCredentialsInBody(body, credentials) {
+  async postTokenWithBasicResponse(body) {
+    return this.request({
+      method: "POST",
+      url: TOKEN_URL,
+      headers: {
+        Authorization: `Basic ${encodeBasicAuth(
+          this.clientId,
+          this.clientSecret
+        )}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json"
+      },
+      body
+    });
+  }
+
+  async postTokenWithCredentialsInBodyResponse(body, credentials) {
     const params = new URLSearchParams(body);
     params.set("client_id", credentials.clientId);
     params.set("client_secret", credentials.clientSecret);
 
-    const response = await this.request({
+    return this.request({
       method: "POST",
       url: TOKEN_URL,
       headers: {
@@ -145,16 +186,6 @@ class SpotifyClient {
       },
       body: params.toString()
     });
-
-    if (response.status < 200 || response.status >= 300) {
-      throw new Error(tokenErrorMessage(response));
-    }
-
-    if (!response.body) {
-      throw new Error(tokenErrorMessage(response));
-    }
-
-    return response.body;
   }
 
   async getAccessToken() {

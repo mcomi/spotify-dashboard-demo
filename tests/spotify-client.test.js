@@ -151,6 +151,45 @@ async function testTokenExchangeReportsNonJsonResponse() {
   );
 }
 
+async function testTokenExchangeRetriesServerErrorWithBodyCredentials() {
+  const tokenRequests = [];
+  const client = new SpotifyClient({
+    clientId: "client-id",
+    clientSecret: "client-secret",
+    redirectUri: "http://127.0.0.1:3000/api/spotify/callback",
+    request: async (request) => {
+      tokenRequests.push(request);
+
+      if (tokenRequests.length === 1) {
+        return {
+          status: 502,
+          headers: {},
+          body: null,
+          rawBody: "<html><head><title>502 Server Error</title></head></html>"
+        };
+      }
+
+      return {
+        status: 200,
+        headers: {},
+        body: {
+          access_token: "access-token",
+          refresh_token: "refresh-token",
+          expires_in: 3600
+        }
+      };
+    }
+  });
+
+  const tokens = await client.exchangeCodeForTokens("code-123");
+
+  assert.strictEqual(tokens.refresh_token, "refresh-token");
+  assert.strictEqual(tokenRequests.length, 2);
+  assert(tokenRequests[0].headers.Authorization.startsWith("Basic "));
+  assert(!tokenRequests[1].headers.Authorization);
+  assert(tokenRequests[1].body.includes("client_id=client-id"));
+}
+
 async function testRefreshAndPagination() {
   const calls = [];
   const client = new SpotifyClient({
@@ -608,6 +647,7 @@ async function run() {
     testTokenExchange,
     testTokenExchangeFallsBackToBodyCredentials,
     testTokenExchangeReportsNonJsonResponse,
+    testTokenExchangeRetriesServerErrorWithBodyCredentials,
     testRefreshAndPagination,
     testUnauthorizedRetryRefreshesToken,
     testRateLimitRetry,
