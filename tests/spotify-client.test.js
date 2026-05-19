@@ -22,6 +22,11 @@ const {
   saveSnapshot
 } = require("../src/storage/snapshot-store");
 const {
+  getRedisRestToken,
+  getRedisRestUrl,
+  hasRedisConfig
+} = require("../src/storage/redis");
+const {
   API_BASE_URL,
   SpotifyClient,
   createAuthorizationUrl
@@ -536,6 +541,46 @@ async function testLocalSnapshotStore() {
   }
 }
 
+async function testRedisMarketplaceAliases() {
+  const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const originalToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const originalKvUrl = process.env.UPSTASH_REDIS_REST_KV_REST_API_URL;
+  const originalKvToken = process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
+
+  delete process.env.UPSTASH_REDIS_REST_URL;
+  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  process.env.UPSTASH_REDIS_REST_KV_REST_API_URL = "https://example.upstash.io";
+  process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN = "marketplace-token";
+
+  assert.strictEqual(hasRedisConfig(), true);
+  assert.strictEqual(getRedisRestUrl(), "https://example.upstash.io");
+  assert.strictEqual(getRedisRestToken(), "marketplace-token");
+
+  if (originalUrl === undefined) {
+    delete process.env.UPSTASH_REDIS_REST_URL;
+  } else {
+    process.env.UPSTASH_REDIS_REST_URL = originalUrl;
+  }
+
+  if (originalToken === undefined) {
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  } else {
+    process.env.UPSTASH_REDIS_REST_TOKEN = originalToken;
+  }
+
+  if (originalKvUrl === undefined) {
+    delete process.env.UPSTASH_REDIS_REST_KV_REST_API_URL;
+  } else {
+    process.env.UPSTASH_REDIS_REST_KV_REST_API_URL = originalKvUrl;
+  }
+
+  if (originalKvToken === undefined) {
+    delete process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
+  } else {
+    process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN = originalKvToken;
+  }
+}
+
 async function run() {
   const tests = [
     testAuthorizationUrl,
@@ -549,7 +594,8 @@ async function run() {
     testOllamaBrief,
     testAiBriefFallsBackWhenOllamaFails,
     testPrivateAuth,
-    testLocalSnapshotStore
+    testLocalSnapshotStore,
+    testRedisMarketplaceAliases
   ];
 
   for (const test of tests) {

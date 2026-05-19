@@ -8,6 +8,7 @@ const {
   getSnapshotIndex,
   getStorageMode
 } = require("../../../../src/storage/snapshot-store");
+const { hasRedisConfig } = require("../../../../src/storage/redis");
 
 export const runtime = "nodejs";
 
@@ -27,10 +28,7 @@ export async function GET(request: Request) {
       spotifyRedirectUri: Boolean(process.env.SPOTIFY_REDIRECT_URI),
       dashboardAccessToken: Boolean(process.env.DASHBOARD_ACCESS_TOKEN),
       cronSecret: Boolean(process.env.CRON_SECRET),
-      upstashRedis: Boolean(
-        process.env.UPSTASH_REDIS_REST_URL &&
-          process.env.UPSTASH_REDIS_REST_TOKEN
-      )
+      upstashRedis: hasRedisConfig()
     },
     storageMode: getStorageMode(),
     latestGeneratedAt: latest ? latest.snapshot.generatedAt : null,

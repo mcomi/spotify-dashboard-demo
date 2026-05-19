@@ -4,14 +4,28 @@ const LATEST_KEY = "spotify:latest-snapshot";
 const INDEX_KEY = "spotify:snapshots:index";
 const MAX_INDEX_ITEMS = 30;
 
-function hasRedisConfig() {
-  return Boolean(
-    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+function getRedisRestUrl() {
+  return (
+    process.env.UPSTASH_REDIS_REST_URL ||
+    process.env.UPSTASH_REDIS_REST_KV_REST_API_URL ||
+    process.env.KV_REST_API_URL
   );
 }
 
+function getRedisRestToken() {
+  return (
+    process.env.UPSTASH_REDIS_REST_TOKEN ||
+    process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN ||
+    process.env.KV_REST_API_TOKEN
+  );
+}
+
+function hasRedisConfig() {
+  return Boolean(getRedisRestUrl() && getRedisRestToken());
+}
+
 function redisUrl(command) {
-  return `${process.env.UPSTASH_REDIS_REST_URL}/${command
+  return `${getRedisRestUrl()}/${command
     .map((part) => encodeURIComponent(part))
     .join("/")}`;
 }
@@ -21,7 +35,7 @@ async function redisCommand(command) {
     method: "POST",
     url: redisUrl(command),
     headers: {
-      Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`
+      Authorization: `Bearer ${getRedisRestToken()}`
     }
   });
 
@@ -93,6 +107,8 @@ module.exports = {
   LATEST_KEY,
   getLatestSnapshot,
   getSnapshotIndex,
+  getRedisRestToken,
+  getRedisRestUrl,
   hasRedisConfig,
   redisCommand,
   saveSnapshot

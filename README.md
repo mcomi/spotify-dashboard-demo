@@ -58,7 +58,21 @@ Local development can work without Upstash. If Redis is not configured, snapshot
 1. Push this folder to a GitHub repository.
 2. In Vercel, import the GitHub repo as a Next.js project.
 3. Add Upstash Redis from Vercel Marketplace.
-4. Confirm these variables exist in Vercel:
+4. Confirm Redis variables exist in Vercel. The app supports either the short names or the longer Marketplace names:
+
+   ```text
+   UPSTASH_REDIS_REST_URL
+   UPSTASH_REDIS_REST_TOKEN
+   ```
+
+   or:
+
+   ```text
+   UPSTASH_REDIS_REST_KV_REST_API_URL
+   UPSTASH_REDIS_REST_KV_REST_API_TOKEN
+   ```
+
+5. Confirm these app variables exist in Vercel:
 
    ```text
    SPOTIFY_CLIENT_ID
@@ -67,15 +81,13 @@ Local development can work without Upstash. If Redis is not configured, snapshot
    SPOTIFY_REDIRECT_URI=https://TU-DOMINIO.vercel.app/api/spotify/callback
    DASHBOARD_ACCESS_TOKEN
    CRON_SECRET
-   UPSTASH_REDIS_REST_URL
-   UPSTASH_REDIS_REST_TOKEN
    OPENAI_API_KEY
    OPENAI_MODEL=gpt-4.1-mini
    OLLAMA_BASE_URL=http://127.0.0.1:11434
    OLLAMA_MODEL=llama3.2:3b
    ```
 
-5. Deploy from `main`.
+6. Deploy from `main`.
 
 Pushes to `main` deploy production. Pull requests create preview deployments.
 
