@@ -131,10 +131,10 @@ class SpotifyClient {
 
     if (
       isRetryableTokenResponse(response) &&
-      attempt < 3
+      attempt < 5
     ) {
       const retryAfterSeconds = Number(response.headers["retry-after"] || 0);
-      const fallbackDelayMs = 400 * Math.pow(2, attempt);
+      const fallbackDelayMs = 750 * Math.pow(2, attempt);
       const delayMs = retryAfterSeconds > 0 ? retryAfterSeconds * 1000 : fallbackDelayMs;
       await sleep(delayMs);
 
