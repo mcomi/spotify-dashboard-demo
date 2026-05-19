@@ -130,6 +130,27 @@ async function testTokenExchangeFallsBackToBodyCredentials() {
   assert(tokenRequests[1].body.includes("client_secret=client-secret"));
 }
 
+async function testTokenExchangeReportsNonJsonResponse() {
+  const client = new SpotifyClient({
+    clientId: "client-id",
+    clientSecret: "client-secret",
+    redirectUri: "http://127.0.0.1:3000/api/spotify/callback",
+    request: async () => ({
+      status: 502,
+      headers: {
+        "content-type": "text/html"
+      },
+      body: null,
+      rawBody: "<html><head><title>Bad Gateway</title></head></html>"
+    })
+  });
+
+  await assert.rejects(
+    () => client.exchangeCodeForTokens("code-123"),
+    /Spotify token request failed with status 502/
+  );
+}
+
 async function testRefreshAndPagination() {
   const calls = [];
   const client = new SpotifyClient({
@@ -586,6 +607,7 @@ async function run() {
     testAuthorizationUrl,
     testTokenExchange,
     testTokenExchangeFallsBackToBodyCredentials,
+    testTokenExchangeReportsNonJsonResponse,
     testRefreshAndPagination,
     testUnauthorizedRetryRefreshesToken,
     testRateLimitRetry,

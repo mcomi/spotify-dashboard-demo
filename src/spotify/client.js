@@ -13,6 +13,25 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function responseSnippet(response) {
+  return response.rawBody ? response.rawBody.slice(0, 160).replace(/\s+/g, " ") : "";
+}
+
+function tokenErrorMessage(response) {
+  if (response.body && response.body.error_description) {
+    return response.body.error_description;
+  }
+
+  if (response.body && response.body.error) {
+    return response.body.error;
+  }
+
+  const snippet = responseSnippet(response);
+  return snippet
+    ? `Spotify token request failed with status ${response.status}: ${snippet}`
+    : `Spotify token request failed with status ${response.status}`;
+}
+
 function createAuthorizationUrl(options) {
   const params = new URLSearchParams({
     response_type: "code",
@@ -86,7 +105,8 @@ class SpotifyClient {
           this.clientId,
           this.clientSecret
         )}`,
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json"
       },
       body
     });
@@ -101,11 +121,11 @@ class SpotifyClient {
     }
 
     if (response.status < 200 || response.status >= 300) {
-      const message =
-        response.body && response.body.error_description
-          ? response.body.error_description
-          : `Spotify token request failed with status ${response.status}`;
-      throw new Error(message);
+      throw new Error(tokenErrorMessage(response));
+    }
+
+    if (!response.body) {
+      throw new Error(tokenErrorMessage(response));
     }
 
     return response.body;
@@ -120,17 +140,18 @@ class SpotifyClient {
       method: "POST",
       url: TOKEN_URL,
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json"
       },
       body: params.toString()
     });
 
     if (response.status < 200 || response.status >= 300) {
-      const message =
-        response.body && response.body.error_description
-          ? response.body.error_description
-          : `Spotify token request failed with status ${response.status}`;
-      throw new Error(message);
+      throw new Error(tokenErrorMessage(response));
+    }
+
+    if (!response.body) {
+      throw new Error(tokenErrorMessage(response));
     }
 
     return response.body;
@@ -160,7 +181,8 @@ class SpotifyClient {
       method: options.method || "GET",
       url,
       headers: Object.assign({}, options.headers || {}, {
-        Authorization: `Bearer ${accessToken}`
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
       }),
       body: options.body
     });

@@ -31,16 +31,15 @@ function requestJson(options) {
             try {
               json = JSON.parse(rawBody);
             } catch (error) {
-              error.message = `Failed to parse JSON response from ${url.href}: ${error.message}`;
-              reject(error);
-              return;
+              json = null;
             }
           }
 
           resolve({
             status: response.statusCode,
             headers: response.headers,
-            body: json
+            body: json,
+            rawBody
           });
         });
       }
