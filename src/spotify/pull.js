@@ -51,13 +51,17 @@ async function pullTopItems(client, timeRanges, onProgress) {
       onProgress(`Pulling top artists: ${timeRange}`);
     }
 
-    topArtists[timeRange] = await client.getTopArtists(timeRange);
+    topArtists[timeRange] = (
+      await client.api(`/me/top/artists?time_range=${timeRange}&limit=50`)
+    ).items || [];
 
     if (onProgress) {
       onProgress(`Pulling top tracks: ${timeRange}`);
     }
 
-    topTracks[timeRange] = await client.getTopTracks(timeRange);
+    topTracks[timeRange] = (
+      await client.api(`/me/top/tracks?time_range=${timeRange}&limit=50`)
+    ).items || [];
   }
 
   return { topArtists, topTracks };

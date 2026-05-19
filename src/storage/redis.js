@@ -33,10 +33,12 @@ function redisUrl(command) {
 async function redisCommand(command) {
   const response = await requestJson({
     method: "POST",
-    url: redisUrl(command),
+    url: getRedisRestUrl(),
     headers: {
-      Authorization: `Bearer ${getRedisRestToken()}`
-    }
+      Authorization: `Bearer ${getRedisRestToken()}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(command)
   });
 
   if (response.status < 200 || response.status >= 300) {
