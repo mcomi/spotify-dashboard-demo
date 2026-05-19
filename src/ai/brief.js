@@ -1,6 +1,9 @@
+const http = require("http");
 const https = require("https");
 
 const DEFAULT_MODEL = "gpt-4.1-mini";
+const DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434";
+const DEFAULT_OLLAMA_MODEL = "llama3.2:3b";
 
 function compactAnalytics(analytics) {
   return {
@@ -141,6 +144,50 @@ function openAiRequest(payload) {
   });
 }
 
+function requestJson(urlString, payload, timeoutMs) {
+  const url = new URL(urlString);
+  const body = JSON.stringify(payload);
+  const transport = url.protocol === "https:" ? https : http;
+
+  return new Promise((resolve, reject) => {
+    const request = transport.request(
+      {
+        method: "POST",
+        hostname: url.hostname,
+        port: url.port || undefined,
+        path: `${url.pathname}${url.search}`,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body)
+        }
+      },
+      (response) => {
+        const chunks = [];
+
+        response.on("data", (chunk) => chunks.push(chunk));
+        response.on("end", () => {
+          const raw = Buffer.concat(chunks).toString("utf8");
+          const json = raw ? JSON.parse(raw) : {};
+
+          if (response.statusCode < 200 || response.statusCode >= 300) {
+            reject(new Error(`AI provider failed with status ${response.statusCode}`));
+            return;
+          }
+
+          resolve(json);
+        });
+      }
+    );
+
+    request.on("error", reject);
+    request.setTimeout(timeoutMs || 60000, () => {
+      request.destroy(new Error(`AI provider timed out after ${timeoutMs || 60000}ms.`));
+    });
+    request.write(body);
+    request.end();
+  });
+}
+
 function extractResponseText(response) {
   if (response.output_text) {
     return response.output_text;
@@ -187,21 +234,73 @@ async function generateOpenAiBrief(analytics) {
   );
 }
 
-async function generateAiBrief(analytics) {
+function createBriefPrompt(analytics) {
+  return `Create a Spanish listening brief from this Spotify analytics JSON. Return only valid JSON with this exact shape: {\"title\": string, \"summary\": string, \"patterns\": string[], \"surprises\": string[], \"recommendations\": string[], \"playlistIdeas\": [{\"name\": string, \"description\": string}]}. Be specific, concise, and useful. Do not invent Spotify audio features. Analytics: ${JSON.stringify(compactAnalytics(analytics))}`;
+}
+
+async function generateOllamaBrief(analytics, options) {
+  const request = options && options.request ? options.request : requestJson;
+  const baseUrl =
+    process.env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL;
+  const model =
+    process.env.OLLAMA_MODEL || DEFAULT_OLLAMA_MODEL;
+  const response = await request(
+    `${baseUrl.replace(/\/$/, "")}/api/generate`,
+    {
+      model,
+      prompt: createBriefPrompt(analytics),
+      stream: false,
+      format: "json",
+      options: {
+        temperature: 0.2
+      }
+    },
+    Number(process.env.OLLAMA_TIMEOUT_MS || 60000)
+  );
+  const parsed = parseJsonObject(response.response || "");
+
+  return Object.assign(
+    {
+      generatedAt: new Date().toISOString(),
+      source: "ollama",
+      model
+    },
+    parsed
+  );
+}
+
+async function generateAiBrief(analytics, options) {
   if (!analytics) {
     throw new Error("Analytics are required to generate an AI brief.");
   }
 
-  if (!process.env.OPENAI_API_KEY) {
-    return fallbackBrief(analytics);
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      return await generateOpenAiBrief(analytics);
+    } catch (error) {
+      if (process.env.AI_FALLBACK_ON_ERROR === "false") {
+        throw error;
+      }
+    }
   }
 
-  return generateOpenAiBrief(analytics);
+  if (process.env.OLLAMA_BASE_URL || process.env.OLLAMA_MODEL) {
+    try {
+      return await generateOllamaBrief(analytics, options);
+    } catch (error) {
+      if (process.env.AI_FALLBACK_ON_ERROR === "false") {
+        throw error;
+      }
+    }
+  }
+
+  return fallbackBrief(analytics);
 }
 
 module.exports = {
   compactAnalytics,
   fallbackBrief,
   generateAiBrief,
+  generateOllamaBrief,
   parseJsonObject
 };

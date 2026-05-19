@@ -8,7 +8,12 @@ const {
   isValidAccessToken,
   isValidSessionValue
 } = require("../src/auth");
-const { compactAnalytics, fallbackBrief } = require("../src/ai/brief");
+const {
+  compactAnalytics,
+  fallbackBrief,
+  generateAiBrief,
+  generateOllamaBrief
+} = require("../src/ai/brief");
 const { buildAnalytics } = require("../src/spotify/analytics");
 const { SPOTIFY_SCOPES } = require("../src/spotify/scopes");
 const {
@@ -391,6 +396,85 @@ async function testAiBriefFallback() {
   assert(brief.playlistIdeas.length > 0);
 }
 
+async function testOllamaBrief() {
+  const originalBaseUrl = process.env.OLLAMA_BASE_URL;
+  const originalModel = process.env.OLLAMA_MODEL;
+  process.env.OLLAMA_BASE_URL = "http://127.0.0.1:11434";
+  process.env.OLLAMA_MODEL = "test-model";
+
+  const brief = await generateOllamaBrief(demoAnalytics(), {
+    request: async (url, payload) => {
+      assert.strictEqual(url, "http://127.0.0.1:11434/api/generate");
+      assert.strictEqual(payload.model, "test-model");
+      assert.strictEqual(payload.stream, false);
+      assert.strictEqual(payload.format, "json");
+
+      return {
+        response: JSON.stringify({
+          title: "Brief local",
+          summary: "Resumen local",
+          patterns: ["Patron"],
+          surprises: ["Sorpresa"],
+          recommendations: ["Recomendacion"],
+          playlistIdeas: [{ name: "Idea", description: "Descripcion" }]
+        })
+      };
+    }
+  });
+
+  assert.strictEqual(brief.source, "ollama");
+  assert.strictEqual(brief.model, "test-model");
+  assert.strictEqual(brief.title, "Brief local");
+
+  if (originalBaseUrl === undefined) {
+    delete process.env.OLLAMA_BASE_URL;
+  } else {
+    process.env.OLLAMA_BASE_URL = originalBaseUrl;
+  }
+
+  if (originalModel === undefined) {
+    delete process.env.OLLAMA_MODEL;
+  } else {
+    process.env.OLLAMA_MODEL = originalModel;
+  }
+}
+
+async function testAiBriefFallsBackWhenOllamaFails() {
+  const originalOpenAi = process.env.OPENAI_API_KEY;
+  const originalBaseUrl = process.env.OLLAMA_BASE_URL;
+  const originalFallback = process.env.AI_FALLBACK_ON_ERROR;
+
+  delete process.env.OPENAI_API_KEY;
+  process.env.OLLAMA_BASE_URL = "http://127.0.0.1:11434";
+  process.env.AI_FALLBACK_ON_ERROR = "true";
+
+  const brief = await generateAiBrief(demoAnalytics(), {
+    request: async () => {
+      throw new Error("Ollama unavailable");
+    }
+  });
+
+  assert.strictEqual(brief.source, "fallback");
+
+  if (originalOpenAi === undefined) {
+    delete process.env.OPENAI_API_KEY;
+  } else {
+    process.env.OPENAI_API_KEY = originalOpenAi;
+  }
+
+  if (originalBaseUrl === undefined) {
+    delete process.env.OLLAMA_BASE_URL;
+  } else {
+    process.env.OLLAMA_BASE_URL = originalBaseUrl;
+  }
+
+  if (originalFallback === undefined) {
+    delete process.env.AI_FALLBACK_ON_ERROR;
+  } else {
+    process.env.AI_FALLBACK_ON_ERROR = originalFallback;
+  }
+}
+
 async function testPrivateAuth() {
   const originalToken = process.env.DASHBOARD_ACCESS_TOKEN;
   process.env.DASHBOARD_ACCESS_TOKEN = "private-token";
@@ -462,6 +546,8 @@ async function run() {
     testRateLimitRetry,
     testAnalytics,
     testAiBriefFallback,
+    testOllamaBrief,
+    testAiBriefFallsBackWhenOllamaFails,
     testPrivateAuth,
     testLocalSnapshotStore
   ];

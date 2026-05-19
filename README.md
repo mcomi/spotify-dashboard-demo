@@ -71,6 +71,8 @@ Local development can work without Upstash. If Redis is not configured, snapshot
    UPSTASH_REDIS_REST_TOKEN
    OPENAI_API_KEY
    OPENAI_MODEL=gpt-4.1-mini
+   OLLAMA_BASE_URL=http://127.0.0.1:11434
+   OLLAMA_MODEL=llama3.2:3b
    ```
 
 5. Deploy from `main`.
@@ -92,8 +94,27 @@ The dashboard avoids Spotify endpoints restricted for newer apps, including Audi
 The dashboard includes an AI Listening Brief card. It can summarize patterns, surprises, recommendations, and playlist ideas from the current Spotify snapshot.
 
 - With `OPENAI_API_KEY`, the app calls OpenAI server-side.
-- Without `OPENAI_API_KEY`, the app uses a deterministic local fallback so the feature still works in local demos.
+- With `OLLAMA_BASE_URL` or `OLLAMA_MODEL`, the app can call a local Ollama model.
+- Without either provider, the app uses a deterministic local fallback so the feature still works in demos.
 - The brief is saved back into the current snapshot in Upstash Redis or the local `data/spotify-snapshot.json` fallback.
+
+To use Ollama locally:
+
+```bash
+brew install ollama
+ollama pull llama3.2:3b
+ollama serve
+```
+
+Then set:
+
+```env
+OPENAI_API_KEY=
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=llama3.2:3b
+```
+
+Provider order is OpenAI, then Ollama, then deterministic fallback. Set `AI_FALLBACK_ON_ERROR=false` if you want provider errors to surface instead of falling back.
 
 ## Automation
 
