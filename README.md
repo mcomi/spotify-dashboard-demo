@@ -69,6 +69,8 @@ Local development can work without Upstash. If Redis is not configured, snapshot
    CRON_SECRET
    UPSTASH_REDIS_REST_URL
    UPSTASH_REDIS_REST_TOKEN
+   OPENAI_API_KEY
+   OPENAI_MODEL=gpt-4.1-mini
    ```
 
 5. Deploy from `main`.
@@ -84,6 +86,14 @@ Pushes to `main` deploy production. Pull requests create preview deployments.
 - `/api/cron/refresh-spotify` refreshes Spotify from Vercel Cron or GitHub Actions when called with `CRON_SECRET`.
 
 The dashboard avoids Spotify endpoints restricted for newer apps, including Audio Features, Audio Analysis, Recommendations, and Related Artists.
+
+## AI Listening Brief
+
+The dashboard includes an AI Listening Brief card. It can summarize patterns, surprises, recommendations, and playlist ideas from the current Spotify snapshot.
+
+- With `OPENAI_API_KEY`, the app calls OpenAI server-side.
+- Without `OPENAI_API_KEY`, the app uses a deterministic local fallback so the feature still works in local demos.
+- The brief is saved back into the current snapshot in Upstash Redis or the local `data/spotify-snapshot.json` fallback.
 
 ## Automation
 

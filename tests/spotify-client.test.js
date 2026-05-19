@@ -8,6 +8,7 @@ const {
   isValidAccessToken,
   isValidSessionValue
 } = require("../src/auth");
+const { compactAnalytics, fallbackBrief } = require("../src/ai/brief");
 const { buildAnalytics } = require("../src/spotify/analytics");
 const { SPOTIFY_SCOPES } = require("../src/spotify/scopes");
 const {
@@ -324,6 +325,72 @@ async function testAnalytics() {
   assert.strictEqual(analytics.playlists[0].explicitTracks, 1);
 }
 
+function demoAnalytics() {
+  return {
+    profile: {
+      id: "user",
+      displayName: "Demo User",
+      country: "US",
+      product: "premium"
+    },
+    library: {
+      savedTracks: 200,
+      savedAlbums: 50,
+      topSavedTrackArtists: [{ name: "Artist", count: 12 }],
+      savedTrackReleaseYears: [{ name: "2020", count: 10 }]
+    },
+    topItems: {
+      artists: [
+        {
+          id: "artist-1",
+          name: "Artist",
+          genres: ["pop"],
+          popularity: 90,
+          followers: 1000
+        }
+      ],
+      tracks: [
+        {
+          id: "track-1",
+          name: "Song",
+          popularity: 80,
+          explicit: false,
+          artists: ["Artist"]
+        }
+      ],
+      genres: [{ name: "pop", count: 3 }]
+    },
+    recentlyPlayed: {
+      totalItems: 50,
+      repeatedTracks: [{ name: "Song", count: 2 }],
+      topArtists: [{ name: "Artist", count: 5 }]
+    },
+    playlists: [
+      {
+        id: "playlist-1",
+        name: "Playlist",
+        totalTracks: 100,
+        explicitTracks: 5,
+        averagePopularity: 70,
+        topArtists: [{ name: "Artist", count: 8 }],
+        releaseYears: [{ name: "2020", count: 12 }]
+      }
+    ]
+  };
+}
+
+async function testAiBriefFallback() {
+  const analytics = demoAnalytics();
+  const compact = compactAnalytics(analytics);
+  const brief = fallbackBrief(analytics);
+
+  assert.strictEqual(compact.topItems.artists.length, 1);
+  assert.strictEqual(brief.source, "fallback");
+  assert(brief.summary.includes("Artist"));
+  assert(brief.patterns.length > 0);
+  assert(brief.playlistIdeas.length > 0);
+}
+
 async function testPrivateAuth() {
   const originalToken = process.env.DASHBOARD_ACCESS_TOKEN;
   process.env.DASHBOARD_ACCESS_TOKEN = "private-token";
@@ -394,6 +461,7 @@ async function run() {
     testUnauthorizedRetryRefreshesToken,
     testRateLimitRetry,
     testAnalytics,
+    testAiBriefFallback,
     testPrivateAuth,
     testLocalSnapshotStore
   ];

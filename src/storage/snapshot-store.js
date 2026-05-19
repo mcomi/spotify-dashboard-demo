@@ -58,6 +58,19 @@ async function saveSnapshot(snapshotEnvelope) {
   return writeLocalSnapshot(snapshotEnvelope);
 }
 
+async function saveAiBrief(aiBrief) {
+  const snapshot = await getLatestSnapshot();
+
+  if (!snapshot) {
+    throw new Error("Cannot save AI brief without a Spotify snapshot.");
+  }
+
+  snapshot.aiBrief = aiBrief;
+  await saveSnapshot(snapshot);
+
+  return snapshot;
+}
+
 function getStorageMode() {
   return hasRedisConfig() ? "upstash-redis" : "local-file";
 }
@@ -66,5 +79,6 @@ module.exports = {
   getLatestSnapshot,
   getSnapshotIndex,
   getStorageMode,
+  saveAiBrief,
   saveSnapshot
 };

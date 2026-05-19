@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   BarChart3,
+  Brain,
   Clock3,
   Database,
   Disc3,
@@ -29,6 +30,7 @@ import {
 type DashboardData = {
   snapshot: any;
   analytics: any;
+  aiBrief?: any;
 } | null;
 
 type DashboardClientProps = {
@@ -122,10 +124,12 @@ export default function DashboardClient({
 }: DashboardClientProps) {
   const [data, setData] = useState<DashboardData>(initialData);
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState("");
 
   const analytics = data?.analytics;
   const snapshot = data?.snapshot;
+  const aiBrief = data?.aiBrief;
 
   const topGenre = analytics?.topItems?.genres?.[0]?.name || "Sin datos";
   const topArtist = analytics?.topItems?.artists?.[0]?.name || "Sin datos";
@@ -157,6 +161,32 @@ export default function DashboardClient({
     const snapshotResponse = await fetch("/api/spotify/snapshot");
     const snapshotBody = await snapshotResponse.json();
     setData(snapshotBody);
+  }
+
+  async function generateAiBrief() {
+    setAiLoading(true);
+    setError("");
+
+    const response = await fetch("/api/ai/insights", {
+      method: "POST"
+    });
+    const body = await response.json().catch(() => ({}));
+
+    setAiLoading(false);
+
+    if (!response.ok) {
+      setError(body.error || "No se pudo generar el AI brief.");
+      return;
+    }
+
+    setData((current) =>
+      current
+        ? {
+            ...current,
+            aiBrief: body.aiBrief
+          }
+        : current
+    );
   }
 
   async function logout() {
@@ -191,6 +221,15 @@ export default function DashboardClient({
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
+          <button
+            className="flex h-11 items-center gap-2 rounded-[8px] border border-line bg-white/7 px-4 font-medium text-white transition hover:border-spotify"
+            onClick={generateAiBrief}
+            disabled={aiLoading}
+            title="Generar AI Listening Brief"
+          >
+            <Brain className={`h-4 w-4 ${aiLoading ? "animate-pulse" : ""}`} />
+            {aiLoading ? "Analizando" : "AI brief"}
+          </button>
           <button
             className="flex h-11 items-center gap-2 rounded-[8px] border border-line bg-white/7 px-4 font-medium text-white transition hover:border-spotify"
             onClick={refreshSnapshot}
@@ -239,6 +278,103 @@ export default function DashboardClient({
           value={topGenre}
         />
       </section>
+
+      <Card className="mt-4 border-spotify/35 bg-[#0b1b12]/88">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="mb-2 flex items-center gap-2 text-sm font-medium uppercase tracking-[0.18em] text-spotify">
+              <Brain className="h-4 w-4" />
+              AI Listening Brief
+            </p>
+            <h2 className="text-2xl font-semibold text-white">
+              {aiBrief?.title || "Genera una lectura inteligente de tu musica"}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-white/68">
+              {aiBrief?.summary ||
+                "La IA puede resumir patrones, sorpresas y recomendaciones usando tu snapshot actual."}
+            </p>
+          </div>
+          <button
+            className="flex h-11 items-center justify-center gap-2 rounded-[8px] bg-spotify px-4 font-semibold text-ink transition hover:bg-[#24d764] disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={generateAiBrief}
+            disabled={aiLoading}
+          >
+            <Sparkles className={`h-4 w-4 ${aiLoading ? "animate-pulse" : ""}`} />
+            {aiLoading ? "Generando" : aiBrief ? "Regenerar brief" : "Generar brief"}
+          </button>
+        </div>
+
+        {aiBrief ? (
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+            <div>
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-white/48">
+                Patrones
+              </h3>
+              <div className="space-y-3">
+                {(aiBrief.patterns || []).slice(0, 3).map((item: string) => (
+                  <p
+                    className="rounded-[8px] border border-line bg-white/6 p-3 text-sm leading-6 text-white/76"
+                    key={item}
+                  >
+                    {item}
+                  </p>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-white/48">
+                Sorpresas
+              </h3>
+              <div className="space-y-3">
+                {(aiBrief.surprises || []).slice(0, 3).map((item: string) => (
+                  <p
+                    className="rounded-[8px] border border-line bg-white/6 p-3 text-sm leading-6 text-white/76"
+                    key={item}
+                  >
+                    {item}
+                  </p>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-white/48">
+                Ideas
+              </h3>
+              <div className="space-y-3">
+                {(aiBrief.playlistIdeas || []).slice(0, 2).map((item: any) => (
+                  <div
+                    className="rounded-[8px] border border-line bg-white/6 p-3"
+                    key={item.name}
+                  >
+                    <p className="font-medium text-white">{item.name}</p>
+                    <p className="mt-1 text-sm leading-6 text-white/64">
+                      {item.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {aiBrief?.recommendations?.length ? (
+          <div className="mt-5 border-t border-line pt-5">
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-white/48">
+              Recomendaciones
+            </h3>
+            <div className="grid gap-3 md:grid-cols-2">
+              {aiBrief.recommendations.slice(0, 4).map((item: string) => (
+                <p
+                  className="rounded-[8px] bg-spotify/10 p-3 text-sm leading-6 text-white/76"
+                  key={item}
+                >
+                  {item}
+                </p>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </Card>
 
       <section className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <Card>
