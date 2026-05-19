@@ -4,6 +4,8 @@ const { errorResponse } = require("../../../../src/http-responses");
 const { SpotifyClient } = require("../../../../src/spotify/client");
 
 export const runtime = "nodejs";
+export const preferredRegion = "sfo1";
+export const maxDuration = 60;
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unexpected Spotify callback error.";

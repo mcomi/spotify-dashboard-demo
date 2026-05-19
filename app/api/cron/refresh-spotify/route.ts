@@ -2,6 +2,8 @@ const { requireCronSecret } = require("../../../../src/http-responses");
 import { POST as refreshSpotify } from "../../spotify/refresh/route";
 
 export const runtime = "nodejs";
+export const preferredRegion = "sfo1";
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   if (!requireCronSecret(request)) {

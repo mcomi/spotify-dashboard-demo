@@ -96,6 +96,7 @@ Pushes to `main` deploy production. Pull requests create preview deployments.
 - `GET /api/spotify/snapshot` returns the current snapshot and analytics.
 - `POST /api/spotify/refresh` refreshes Spotify data and saves a snapshot.
 - `GET /api/spotify/status` checks configuration without exposing secrets.
+- `GET /api/spotify/token-health` tests Spotify token refresh without pulling data.
 - `GET /api/spotify/callback` exchanges a Spotify auth code for a refresh token.
 - `/api/cron/refresh-spotify` refreshes Spotify from Vercel Cron or GitHub Actions when called with `CRON_SECRET`.
 
